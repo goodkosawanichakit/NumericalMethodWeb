@@ -1,10 +1,63 @@
 import { ref } from 'vue'
-import { manpage } from './manPage.ts'
 
 interface Line  {
   text: string
   prompt?: boolean
 }
+
+interface ManPage {
+  name: string;
+  description: string;
+  usage: string;
+  options?: {
+    flag: string;
+    description: string;
+  }[];
+  examples?: {
+    command: string;
+    description: string;
+  }[];
+  notes?: string;
+}
+
+const manPages: ManPage[] = [
+  {
+    name: 'help',
+    description: 'Displays a list of available commands.',
+    usage: 'help',
+    notes: 'This command provides a quick overview of what you can do in this terminal.'
+  },
+  {
+    name: 'clear',
+    description: 'Clears the terminal screen.',
+    usage: 'clear'
+  },
+  {
+    name: 'about',
+    description: 'Provides information about this terminal application.',
+    usage: 'about'
+  },
+  {
+    name: 'man',
+    description: 'Displays the manual page for a given command.',
+    usage: 'man [command_name]',
+    examples: [
+      { command: 'man echo', description: 'Show the manual page for the echo command.' },
+      { command: 'man help', description: 'Show the manual page for the help command.' }
+    ],
+    notes: 'If no command name is provided, it will show general usage.'
+  },
+  {
+    name: 'echo',
+    description: 'Prints the provided message to the terminal.',
+    usage: 'echo [message]',
+    examples: [
+      { command: 'echo Hello World', description: 'Displays "Hello World".' },
+      { command: 'echo "This is a test"', description: 'Displays "This is a test".' }
+    ],
+    notes: 'The echo command is often used for displaying text or variables.'
+  },
+]
 
 const readUntilWhitespace = (inputString: string): string => {
   const firstWhitespaceIndex = inputString.search(/\s/);
@@ -20,7 +73,6 @@ export function useTerminal() {
   const currentInput = ref('');
   const history = ref<string[]>([]);
   const history_index = ref<number>(-1);
-  const manPages = manpage();
   const commands = ref<string[]>([
     'help',
     'clear',
@@ -127,43 +179,39 @@ export function useTerminal() {
       targetCommand = fullInput.substring(firstSpaceIndex + 1).trim();
     } else {
       lines.value.push({ text: 'What manual page do you want?' });
+      lines.value.push({ text: "For example, try 'man man'." });
       return;
     }
+    const manPage = manPages.find(m => m.name === targetCommand);
+        if (manPage) {
+      lines.value.push({ text: `\nNAME\n    ${manPage.name} - ${manPage.description}\n` });
+      lines.value.push({ text: `SYNOPSIS\n    ${manPage.usage}\n` });
 
+      if (manPage.options && manPage.options.length > 0) {
+        lines.value.push({ text: `OPTIONS` });
+        manPage.options.forEach(opt => {
+          lines.value.push({ text: `    ${opt.flag}\n        ${opt.description}\n` });
+        });
+      }
+
+      if (manPage.examples && manPage.examples.length > 0) {
+        lines.value.push({ text: `EXAMPLES` });
+        manPage.examples.forEach(example => {
+          lines.value.push({ text: `    $ ${example.command}` });
+          lines.value.push({ text: `        ${example.description}\n` });
+        });
+      }
+
+      if (manPage.notes) {
+        lines.value.push({ text: `NOTES\n    ${manPage.notes}\n` });
+      }
+      lines.value.push({ text: '' }); 
+    } else {
+      lines.value.push({ text: `No manual entry for ${targetCommand}` });
+      lines.value.push({ text: `Try 'man help' or 'man echo' for examples.` });
+    }
   };
 
-  // const handleMan = (args: string) => {
-  //   const targetCommand = args.toLowerCase();
-  //   const manPage = manPages.find(m => m.name === targetCommand);
-
-  //   if (manPage) {
-  //     lines.value.push({ text: `\nNAME\n    ${manPage.name} - ${manPage.description}\n` });
-  //     lines.value.push({ text: `SYNOPSIS\n    ${manPage.usage}\n` });
-
-  //     if (manPage.options && manPage.options.length > 0) {
-  //       lines.value.push({ text: `OPTIONS` });
-  //       manPage.options.forEach(opt => {
-  //         lines.value.push({ text: `    ${opt.flag}\n        ${opt.description}\n` });
-  //       });
-  //     }
-
-  //     if (manPage.examples && manPage.examples.length > 0) {
-  //       lines.value.push({ text: `EXAMPLES` });
-  //       manPage.examples.forEach(example => {
-  //         lines.value.push({ text: `    $ ${example.command}` });
-  //         lines.value.push({ text: `        ${example.description}\n` });
-  //       });
-  //     }
-
-  //     if (manPage.notes) {
-  //       lines.value.push({ text: `NOTES\n    ${manPage.notes}\n` });
-  //     }
-  //     lines.value.push({ text: '' }); // Add an empty line for spacing
-  //   } else {
-  //     lines.value.push({ text: `No manual entry for ${targetCommand}` });
-  //     lines.value.push({ text: `Try 'man help' or 'man echo' for examples.` });
-  //   }
-  // };
   return {
     lines,
     currentInput,
